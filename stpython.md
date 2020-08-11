@@ -1,15 +1,13 @@
 # Stata Python 融合应用
 
 ##  [Hua Peng@StataCorp][hpeng]
-### 2019 Stata 中国用户大会
-### [https://huapeng01016.github.io/china2019/](https://huapeng01016.github.io/china2019/)
+### 2020 Stata 中国用户大会
+### [https://huapeng01016.github.io/china1-2020/](https://huapeng01016.github.io/china1-2020/)
 
 # Stata 16与Python的紧密结合
 
-- 嵌入与运行Python程序
-- 互动式执行Python
-- 在do-file中定义与运行Python程序
-- 在ado-file中定义与运行Python程序
+- 互动式运行Python程序
+- 在do-file与ado-file中定义与运行Python程序
 - Python与Stata通过Stata Function Interface (sfi)互动
 
 # 互动式执行Python
@@ -75,10 +73,67 @@ end
 
 * Pandas
 * Numpy
+* Matplotlib, Plotly
 * BeautifulSoup, lxml
-* Matplotlib
 * Scikit-Learn, Tensorflow, Keras
 * NLTK,jieba
+
+# 网络数据的抓取与显示
+
+## 抓取Covid-19数据
+
+~~~~
+local date = "07-30-2020"
+python:
+import pandas as pd
+df = pd.read_csv("https://raw.githubusercontent.com/"\
+	"CSSEGISandData/COVID-19/master/csse_covid_19_data/"\
+	"csse_covid_19_daily_reports/`date'.csv",\
+	dtype={"fips" : np.int32})
+df.columns = df.columns.str.lower()
+df = df.loc[df['country_region'] == "US"]
+df.head()
+end
+~~~~
+
+## 使用**geopandas**和**plotly**显示数据
+~~~~
+python:
+from urllib.request import urlopen
+import numpy as np
+import json
+with urlopen("https://raw.githubusercontent.com/"\
+	"plotly/datasets/master/geojson-counties-fips.json") as response:
+    counties = json.load(response)
+
+import pandas as pd
+df = pd.read_csv("https://raw.githubusercontent.com/"\
+	"CSSEGISandData/COVID-19/master/csse_covid_19_data/"\
+	"csse_covid_19_daily_reports/`date'.csv",\
+	dtype={"fips" : np.int32})
+df.columns = df.columns.str.lower()
+df = df.loc[df['country_region'] == "US"]
+import plotly.express as px
+fig = px.choropleth(df, geojson=counties, locations='fips', 
+						color='confirmed',
+						hover_data=['combined_key', 'confirmed'],
+						color_continuous_scale='Inferno',
+						range_color = [100, 5000],
+						scope="usa",
+                        labels={'confirmed':'confirmed cases'}
+                    )
+fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+fig.show()
+# fig.write_html("./stata/`date'-`state'.html")
+end
+~~~~
+
+##
+
+* [07-30-2020](./stata/07-30-2020-.html)
+* [07-30-2020 New York](./stata/07-30-2020-New York.html)
+* [07-30-2020 Texas](./stata/07-30-2020-Texas.html)
+
 
 # 三维曲面图
 
@@ -136,7 +191,7 @@ plt.savefig("sandstone.png")
 end
 <</dd_do>>
 
-## 结果
+##
 
 ![sandstone.png](./sandstone.png "sandstone.png")
 
@@ -170,80 +225,6 @@ end
 
 ![sandstone.gif](./sandstone.gif)
 
-
-# 网络数据的抓取
-
-## 使用**pandas**获取表格
-
-抓取[Nasdaq 100 stock tickers](https://en.wikipedia.org/wiki/NASDAQ-100)
-
-~~~~
-python:
-import pandas as pd
-data = pd.read_html("https://en.wikipedia.org/wiki/NASDAQ-100")
-df = data[2]
-df = df.drop(df.index[0])
-t = df.values.tolist()
-end
-~~~~
-
-## 生成Stata dataset
-
-~~~~
-python:
-from sfi import Data
-Data.addObs(len(t))
-stata: gen company = ""
-stata: gen ticker = ""
-Data.store(None, range(len(t)), t)
-end
-~~~~
-
-## 
-
-<<dd_do: quietly>>
-use stata/nas100ticker.dta, clear
-<</dd_do>>
-
-~~~~
-<<dd_do>>
-list in 1/5, clean
-<</dd_do>>
-~~~~
-
-## 使用**lxml**分解HTML
-
-使用[Python script](./stata/nas1detail.py)获得Nasdaq 100股票具体信息, 
-例如[ATVI](http://www.nasdaq.com/symbol/ATVI).
-
-
-## 调用Python文件和输入参数
-
-~~~~
-use nas100ticker, clear
-quietly describe
-frame create detail
-forvalues i = 1/`r(N)' {
-	local a = ticker[`i']
-	local b detail
-	python script nas1detail.py, args(`a' `b')
-	sleep 100
-}
-frame detail : save nasd100detail.dta, replace
-~~~~
-
-## 
-
-<<dd_do: quietly>>
-use stata/nasd100detail.dta, clear
-keep if open_price != ""
-<</dd_do>>
-
-~~~~
-<<dd_do>>
-list ticker open_price open_date close_price close_date in 1/5, clean
-<</dd_do>>
-~~~~
 
 # Support Vector Machine (SVM)
 
@@ -446,6 +427,81 @@ To access **svc_clf** in Python routines in ado files:
 ...
 from __main__ import svc_clf
 ...
+~~~~
+
+
+# 网络数据的抓取
+
+## 使用**pandas**获取表格
+
+抓取[Nasdaq 100 stock tickers](https://en.wikipedia.org/wiki/NASDAQ-100)
+
+~~~~
+python:
+import pandas as pd
+data = pd.read_html("https://en.wikipedia.org/wiki/NASDAQ-100")
+df = data[2]
+df = df.drop(df.index[0])
+t = df.values.tolist()
+end
+~~~~
+
+## 生成Stata dataset
+
+~~~~
+python:
+from sfi import Data
+Data.addObs(len(t))
+stata: gen company = ""
+stata: gen ticker = ""
+Data.store(None, range(len(t)), t)
+end
+~~~~
+
+## 
+
+<<dd_do: quietly>>
+use stata/nas100ticker.dta, clear
+<</dd_do>>
+
+~~~~
+<<dd_do>>
+list in 1/5, clean
+<</dd_do>>
+~~~~
+
+## 使用**lxml**分解HTML
+
+使用[Python script](./stata/nas1detail.py)获得Nasdaq 100股票具体信息, 
+例如[ATVI](http://www.nasdaq.com/symbol/ATVI).
+
+
+## 调用Python文件和输入参数
+
+~~~~
+use nas100ticker, clear
+quietly describe
+frame create detail
+forvalues i = 1/`r(N)' {
+	local a = ticker[`i']
+	local b detail
+	python script nas1detail.py, args(`a' `b')
+	sleep 100
+}
+frame detail : save nasd100detail.dta, replace
+~~~~
+
+## 
+
+<<dd_do: quietly>>
+use stata/nasd100detail.dta, clear
+keep if open_price != ""
+<</dd_do>>
+
+~~~~
+<<dd_do>>
+list ticker open_price open_date close_price close_date in 1/5, clean
+<</dd_do>>
 ~~~~
 
 # 工具
