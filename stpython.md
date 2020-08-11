@@ -517,23 +517,6 @@ list ticker open_price open_date close_price close_date in 1/5, clean
 
 ##
 
-![中文词图](./stata/words2.png)
-
-## **jieba**[中文分词](./stata/words2.do)
-
-~~~~
-url = "http://www.uone-tech.cn/news/stata16.html"    
-html = requests.get(url) 
-html.encoding='utf-8' 
-text = BeautifulSoup(html.text).get_text() 
-
-import jieba       
-words = jieba.lcut(text)        
-
-~~~~
-
-## 
-
 ![words.png](./stata/words.png)
 
 ## [英文词频](./stata/words.do)
